@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 import datetime
+import json
 import logging
 import os
 import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 import zoneinfo
 from argparse import ArgumentParser
@@ -14,6 +16,8 @@ from argparse import ArgumentParser
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from lib.waveshare_epd import epd2in13b_V3
+
+DESCRIPTION = "roguh's epd2in13b_V3 e-paper clock and art"
 
 root = os.path.dirname(os.path.realpath(__file__))
 picdir = os.path.join(root, "pic")
@@ -24,35 +28,60 @@ FORMAT = "[%(levelname)s] %(module)s:%(funcName)s %(asctime)s: %(message)s"
 
 logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
-fh = logging.FileHandler(LOG_FILE)
+fh = logging.FileHandler(LOG_FILE, "a+")
 fh.setLevel(logging.INFO)
 fh.setFormatter(logging.Formatter(FORMAT))
 logging.getLogger().addHandler(fh)
 
-parser = ArgumentParser()
-parser.add_argument("--white-background", "-w", action="store_true")
+parser = ArgumentParser(description=DESCRIPTION)
+parser.add_argument(
+    "--cycle", "--period", "-c", type=float, default=5, help="Run every X minutes"
+)
+parser.add_argument("--black-background", "-b", action="store_true")
 parser.add_argument("--max-iterations", "-m", type=int, default=float("inf"))
 argp = parser.parse_args()
-white_background = argp.white_background
+black_background = argp.black_background
 max_iterations = argp.max_iterations
+target_cycle = argp.cycle
+
+logging.warning(
+    """
+@@@@@@@    @@@@@@    @@@@@@@@  @@@  @@@  @@@  @@@        @@@@@@@   @@@@@@   @@@@@@@@@@
+@@@@@@@@  @@@@@@@@  @@@@@@@@@  @@@  @@@  @@@  @@@       @@@@@@@@  @@@@@@@@  @@@@@@@@@@@
+@@!  @@@  @@!  @@@  !@@        @@!  @@@  @@!  @@@       !@@       @@!  @@@  @@! @@! @@!
+!@!  @!@  !@!  @!@  !@!        !@!  @!@  !@!  @!@       !@!       !@!  @!@  !@! !@! !@!
+@!@!!@!   @!@  !@!  !@! @!@!@  @!@  !@!  @!@!@!@!       !@!       @!@  !@!  @!! !!@ @!@
+!!@!@!    !@!  !!!  !!! !!@!!  !@!  !!!  !!!@!!!!       !!!       !@!  !!!  !@!   ! !@!
+!!: :!!   !!:  !!!  :!!   !!:  !!:  !!!  !!:  !!!       :!!       !!:  !!!  !!:     !!:
+:!:  !:!  :!:  !:!  :!:   !::  :!:  !:!  :!:  !:!  :!:  :!:       :!:  !:!  :!:     :!:
+::   :::  ::::: ::   ::: ::::  ::::: ::  ::   :::  :::   ::: :::  ::::: ::  :::     ::
+ :   : :   : :  :    :: :: :    : :  :    :   : :  :::   :: :: :   : :  :    :      :
+"""
+)
+logging.info(DESCRIPTION)
 
 logging.info(
-    "%s background, will iterate %s times",
-    "white" if white_background else "black",
+    "Will draw %s background, will iterate %s times approx. every %s minutes",
+    "white" if not black_background else "black",
     max_iterations,
+    target_cycle,
 )
-logging.info("log file %s", LOG_FILE)
+logging.info("Log file %s", LOG_FILE)
 
 TIME_FORMAT = "%H:%M:%S"
 SUB_TIME_FORMAT = "%H"
 
 # Ping google's rock-solid DNS server
 PING_IP = "8.8.8.8"
-PING_CMD = "ping -W 0.5 -t 250 -i 0.05 -c 20 " + PING_IP
+PING_CMD = "ping -W 0.5 -t 250 -i 0.05 -c 10".split() + [PING_IP]
+PING_CMD_TIMEOUT_SECS = 5
+
+SPEEDTEST_CMD = "speedtest-cli --json".split()
+SPEEDTEST_CMD_TIMEOUT_SECS = 35
 
 
 def handler_stop_signals(signum, frame):
-    logging.critical("SHUTTING DOWN DUE TO SIGNAL %s", signum)
+    logging.critical("SHUTTING DOWN DUE TO SIGNAL %s frame=%s", signum, frame)
     epd2in13b_V3.epdconfig.module_exit()
     sys.exit()
 
@@ -60,17 +89,55 @@ def handler_stop_signals(signum, frame):
 signal.signal(signal.SIGINT, handler_stop_signals)
 signal.signal(signal.SIGTERM, handler_stop_signals)
 
-try:
-    logging.info("roguh's epd2in13b_V3 clock and art")
 
+def run(cmd, timeout):
+    process = None
+    process_output = ""
+
+    def target():
+        nonlocal process, process_output
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        stdout, stderr = process.communicate()
+        logging.info("Command output %s:\n%s", cmd, stdout)
+        if stderr:
+            logging.warning("Command %s printed to stderr! %s", cmd, stderr)
+        process_output = stdout
+
+    thread = threading.Thread(target=target)
+    thread.start()
+
+    thread.join(timeout)
+    if thread.is_alive() and process is not None:
+        process.terminate()
+        thread.join()
+    return process_output
+
+
+def get_internet_speed():
+    try:
+        logging.info("Running SPEEDTEST_CMD command %s", SPEEDTEST_CMD)
+        output = run(SPEEDTEST_CMD, SPEEDTEST_CMD_TIMEOUT_SECS)
+        blob = json.loads(output)
+        fmt = lambda num: f"{num / 1e6:0.3} Mb"
+        return f"{fmt(blob['download'])}\u2193 {fmt(blob['upload'])}\u2191"
+    except:
+        logging.exception("Exception when running %s", SPEEDTEST_CMD)
+    return ""
+
+
+try:
     epd = epd2in13b_V3.EPD()
 
     # Drawing on the image
     logging.info("Loading files")
-    font40 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 40)
-    font27 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 27)
-    font16 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 16)
-    font12 = ImageFont.truetype(os.path.join(picdir, "Font.ttc"), 12)
+    fontpath = os.path.join(picdir, "Font.ttc")
+    font40 = ImageFont.truetype(fontpath, 40)
+    font27 = ImageFont.truetype(fontpath, 27)
+    font16 = ImageFont.truetype(fontpath, 16)
+    font12 = ImageFont.truetype(fontpath, 12)
+    font10 = ImageFont.truetype(fontpath, 10)
     entire_rose = Image.open(os.path.join(rpicdir, "test.png"))
     no_petals = Image.open(os.path.join(rpicdir, "black.png"))
     rose_petals = Image.open(os.path.join(rpicdir, "red.png"))
@@ -93,24 +160,34 @@ try:
         ]
 
         logging.info("Running PING command %s", PING_CMD)
-        ping_output = subprocess.check_output(PING_CMD.split())
+        ping_output = run(PING_CMD, PING_CMD_TIMEOUT_SECS)
 
-        packet_loss = re.match(
-            ".*, (.*% packet loss)", ping_output.decode("utf-8"), re.DOTALL
-        )
+        packet_loss = re.match(".*, (.*% packet loss)", ping_output, re.DOTALL)
         if packet_loss is not None and len(packet_loss.groups()):
             packet_loss = packet_loss.groups()[0]
+        else:
+            packet_loss = "naurrr"
 
-        ping = re.match(".*mdev = (.*)ms", ping_output.decode("utf-8"), re.DOTALL)
+        ping = re.match(".*mdev = (.*)ms", ping_output, re.DOTALL)
         if ping is not None and len(ping.groups()):
             ping = ping.groups()[0]
             ping = re.sub("\\.\\d+", "", ping, count=4).strip() + " ms"
+        else:
+            ping = ""
+
+        if iteration == 0:
+            # Skip this so the user gets feedback ASAP after starting the script
+            internet_speed = ""
+        else:
+            internet_speed = get_internet_speed()
 
         logging.info(
-            "Drawing the current time (%s) + refresh time (%s), packet_loss=%s",
+            "Drawing the current time=%s + refresh time=%s, packet_loss=%s, ping=%s, internet_speed=%s",
             datetime.datetime.now(),
             refresh_time,
             packet_loss,
+            ping,
+            internet_speed,
         )
         drawing_start_time = time.time()
 
@@ -133,20 +210,22 @@ try:
         drawblack.text((2, 0), msgs[0].strftime(TIME_FORMAT), font=font40, fill=0)
         for i in range(3):
             drawry.text(
-                (i * 104 // 3, 38),
+                (i * 104 // 3, 35),
                 msgs[i + 1].strftime(SUB_TIME_FORMAT),
                 font=font27,
                 fill=0,
             )
 
-        drawblack.text((0, 70), f"{packet_loss}", font=font12, fill=0)
-        drawblack.text((0, 82), f"{ping}", font=font12, fill=0)
+        info_y = 60
+        drawblack.text((0, info_y), f"{packet_loss}", font=font12, fill=0)
+        drawblack.text((0, info_y + 12), f"{ping}", font=font12, fill=0)
+        drawblack.text((0, info_y + 24), f"{internet_speed}", font=font10, fill=0)
 
         logging.info("Drawing rose")
-        if white_background:
-            rose = ImageChops.invert(no_petals.convert("1"))
-        else:
+        if black_background:
             rose = entire_rose.convert("1")
+        else:
+            rose = ImageChops.invert(no_petals.convert("1"))
         drawblack.bitmap((0, 90), rose)
 
         rose = ImageChops.invert(rose_petals.convert("1"))
@@ -163,7 +242,7 @@ try:
         iteration += 1
 
         if iteration < max_iterations:
-            sleep_time = 60 - refresh_time
+            sleep_time = target_cycle * 60 - refresh_time
             logging.info("Sleeping %s seconds", sleep_time)
             time.sleep(sleep_time)
 
