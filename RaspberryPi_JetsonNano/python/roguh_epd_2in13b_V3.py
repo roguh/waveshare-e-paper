@@ -35,7 +35,7 @@ logging.getLogger().addHandler(fh)
 
 parser = ArgumentParser(description=DESCRIPTION)
 parser.add_argument(
-    "--cycle", "--period", "-c", type=float, default=5, help="Run every X minutes"
+    "--cycle", "--period", "-c", type=float, default=1, help="Run every X minutes"
 )
 parser.add_argument("--black-background", "-b", action="store_true")
 parser.add_argument("--max-iterations", "-m", type=int, default=float("inf"))
@@ -145,6 +145,7 @@ try:
     # Drawing on the Vertical image
     refresh_time = 15
     iteration = 0
+    internet_speed = ""
     while iteration < max_iterations:
         msgs = [
             (
@@ -175,11 +176,11 @@ try:
         else:
             ping = ""
 
-        if iteration == 0:
-            # Skip this so the user gets feedback ASAP after starting the script
-            internet_speed = ""
-        else:
-            internet_speed = get_internet_speed()
+        # Don't run this too often
+        if iteration % 5 == 1:
+            new_internet_speed = get_internet_speed()
+            if new_internet_speed != "":
+                internet_speed = new_internet_speed
 
         logging.info(
             "Drawing the current time=%s + refresh time=%s, packet_loss=%s, ping=%s, internet_speed=%s",
@@ -242,7 +243,8 @@ try:
         iteration += 1
 
         if iteration < max_iterations:
-            sleep_time = target_cycle * 60 - refresh_time
+            extra_quickness = 10
+            sleep_time = max(10, target_cycle * 60 - refresh_time - extra_quickness)
             logging.info("Sleeping %s seconds", sleep_time)
             time.sleep(sleep_time)
 
