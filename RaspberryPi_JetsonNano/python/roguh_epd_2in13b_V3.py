@@ -182,13 +182,24 @@ try:
             if new_internet_speed != "":
                 internet_speed = new_internet_speed
 
+        jpath = os.path.join(root, "./upcoming.json")
+        upcoming_output = run(
+            [os.path.join(root, "./upcoming_ical_events.py"), "--output-file", jpath],
+            60,
+        )
+        upcoming_event = {"summary": "none", "delta": ""}
+        if os.path.exists(jpath):
+            with open(jpath) as upcoming_file:
+                upcoming_event = json.load(upcoming_file)
+
         logging.info(
-            "Drawing the current time=%s + refresh time=%s, packet_loss=%s, ping=%s, internet_speed=%s",
+            "Drawing the current time=%s + refresh time=%s, packet_loss=%s, ping=%s, internet_speed=%s, upcoming event=%s",
             datetime.datetime.now(),
             refresh_time,
             packet_loss,
             ping,
             internet_speed,
+            upcoming_event,
         )
         drawing_start_time = time.time()
 
@@ -219,8 +230,19 @@ try:
 
         info_y = 60
         drawblack.text((0, info_y), f"{packet_loss}", font=font12, fill=0)
-        drawblack.text((0, info_y + 12), f"{ping}", font=font12, fill=0)
-        drawblack.text((0, info_y + 24), f"{internet_speed}", font=font10, fill=0)
+        drawblack.text(
+            (0, info_y + 12),
+            f"{upcoming_event['summary']}",
+            font=font10,
+            fill=0,
+        )
+        drawblack.text(
+            (0, info_y + 22),
+            f"{upcoming_event['delta']}",
+            font=font10,
+            fill=0,
+        )
+        drawblack.text((0, info_y + 2+10*3), f"{internet_speed}", font=font10, fill=0)
 
         logging.info("Drawing rose")
         if black_background:
