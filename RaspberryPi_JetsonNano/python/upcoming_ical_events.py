@@ -32,7 +32,9 @@ end_date = (2022, 11, 12)
 
 # TODO add 15 minute local http cache in case of restarts/testing
 # TODO store calendar URLs in a secure location
-with open("calendar_links.json") as calendar_urls_file:
+with open(
+    os.path.join(os.path.dirname(__file__), "calendar_links.json")
+) as calendar_urls_file:
     calendar_urls = json.load(calendar_urls_file)
     assert isinstance(calendar_urls, list)
     for url in calendar_urls:
@@ -73,10 +75,11 @@ def download_calendar(
     if cache:
         too_old, calendar_string = get_from_cache(url, cache, cache_age)
         if not too_old and calendar_string is not None:
-            print("loading cached calendar:", calendar_string)
+            print("loading cached calendar:", url)
             return calendar_string
 
     try:
+        print("downloading calendar:", url)
         calendar_string = urllib.request.urlopen(url).read().decode("utf-8")
     except Exception as exc:
         print("error downloading", exc)
@@ -90,6 +93,10 @@ def download_calendar(
             )
 
     return calendar_string
+
+
+def serialize(event, delta):
+    return json.dumps({"summary": event.summary, "delta": str(delta)})
 
 
 def parse_date(date: Optional[str]) -> datetime:
@@ -108,7 +115,8 @@ def upcoming_events_to_json(
     start_date = parse_date(start_date_str)
     end_date = start_date + timedelta(days=1)
     print(start_date, end_date)
-    upcoming = (None, timedelta(seconds=60 * 60 * 24))
+    upcoming_events = []
+    upcoming_all_day_events = []
     for url, calendar in calendar_strings.items():
         print(url)
         if calendar is None:
@@ -116,6 +124,13 @@ def upcoming_events_to_json(
         for event in parse_events(calendar, start=start_date, end=end_date):
             event = cast(Event, event)
             # TODO print more info or save to JSON
+            delta = cast(timedelta, event.start - start_date)
+            if delta.total_seconds() >= 0:
+                if event.all_day:
+                    upcoming_all_day_events.append((event, delta))
+                else:
+                    upcoming_events.append((event, delta))
+
             if event.all_day:
                 print(
                     "ALL DAY",
@@ -124,13 +139,6 @@ def upcoming_events_to_json(
                     event.location,
                 )
             else:
-                delta = cast(timedelta, event.start - start_date)
-                if (
-                    delta.total_seconds() >= 0
-                    and upcoming[1].total_seconds() > delta.total_seconds()
-                ):
-                    upcoming = (event, delta)
-
                 print(
                     event.start,
                     "\n\t",
@@ -139,16 +147,17 @@ def upcoming_events_to_json(
                     event.summary,
                     event.location,
                 )
-            # End early once the first upcoming event is found
-            if upcoming[0] is not None:
-                continue
 
-    if upcoming[0] is None:
-        obj = {"summary": "none", "delta": ""}
+    upcoming_events.sort(key=lambda x: x[1].total_seconds())
+    upcoming_all_day_events.sort(key=lambda x: x[1].total_seconds())
+
+    if len(upcoming_events) == 0:
+        if len(upcoming_all_day_events) == 0:
+            return serialize("none", "")
+        event, delta = upcoming_all_day_events[0]
     else:
-        event, delta = upcoming
-        obj = {"summary": event.summary, "delta": str(delta)}
-    return json.dumps(obj)
+        event, delta = upcoming_events[0]
+    return serialize(event, delta)
 
 
 def main():

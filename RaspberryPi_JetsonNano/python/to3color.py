@@ -3,7 +3,7 @@ import os
 import sys
 from typing import Optional
 
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageEnhance, ImageFilter,ImageChops
 
 GENERATED_DIRECTORY = "./roguh_pics/generated/"
 
@@ -30,11 +30,11 @@ def save_to_2color(
 ) -> None:
     def pixel_filter(pixel256: int) -> bool:
         if pixel256 > white_threshold:
-            return True
+            return False
         if black_threshold is not None:
             if pixel256 < black_threshold:
-                return True
-        return False
+                return False
+        return True
 
     out_img = input_img.convert("L").point(pixel_filter, mode="1")
     out_img.save(out_fname)

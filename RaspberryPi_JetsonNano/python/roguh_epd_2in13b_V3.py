@@ -39,10 +39,12 @@ parser.add_argument(
 )
 parser.add_argument("--black-background", "-b", action="store_true")
 parser.add_argument("--max-iterations", "-m", type=int, default=float("inf"))
+parser.add_argument("--pictures", "-p", type=str, default="robot,buffalo,rose")
 argp = parser.parse_args()
 black_background = argp.black_background
 max_iterations = argp.max_iterations
 target_cycle = argp.cycle
+pictures = str(argp.pictures).split(",")
 
 logging.warning(
     """
@@ -61,8 +63,9 @@ logging.warning(
 logging.info(DESCRIPTION)
 
 logging.info(
-    "Will draw %s background, will iterate %s times approx. every %s minutes",
+    "Will draw %s background (%s), will iterate %s times approx. every %s minutes",
     "white" if not black_background else "black",
+    ", ".join(pictures),
     max_iterations,
     target_cycle,
 )
@@ -142,11 +145,24 @@ try:
     no_petals = Image.open(os.path.join(rpicdir, "black.png"))
     rose_petals = Image.open(os.path.join(rpicdir, "red.png"))
 
+    buffalo_black = Image.open(
+        os.path.join(rpicdir, "generated/three_color_two_buffalo_104.black.png")
+    )
+    buffalo_red = Image.open(
+        os.path.join(rpicdir, "generated/three_color_two_buffalo_104.red.png")
+    )
+    robot_black = Image.open(
+        os.path.join(rpicdir, "generated/red_robot_3color.black.png")
+    )
+    robot_red = Image.open(os.path.join(rpicdir, "generated/red_robot_3color.red.png"))
+
     # Drawing on the Vertical image
     refresh_time = 15
     iteration = 0
     internet_speed = ""
     while iteration < max_iterations:
+        picture = pictures[iteration % len(pictures)]
+
         msgs = [
             (
                 datetime.datetime.now(tz=zoneinfo.ZoneInfo(tz))
@@ -183,11 +199,12 @@ try:
                 internet_speed = new_internet_speed
 
         jpath = os.path.join(root, "./upcoming.json")
+        logging.info("Running CALENDAR command %s", PING_CMD)
         upcoming_output = run(
             [os.path.join(root, "./upcoming_ical_events.py"), "--output-file", jpath],
             60,
         )
-        upcoming_event = {"summary": "none", "delta": ""}
+        upcoming_event = {"summary": "", "delta": ""}
         if os.path.exists(jpath):
             with open(jpath) as upcoming_file:
                 upcoming_event = json.load(upcoming_file)
@@ -207,6 +224,25 @@ try:
         LRYimage = Image.new("1", (epd.width, epd.height), 255)  # 126*298
         drawblack = ImageDraw.Draw(LBlackimage)
         drawry = ImageDraw.Draw(LRYimage)
+
+        logging.info("Drawing %s", picture)
+        if picture == "rose":
+            if black_background:
+                rose = entire_rose.convert("1")
+            else:
+                rose = ImageChops.invert(no_petals.convert("1"))
+            drawblack.bitmap((0, 90), rose)
+
+            rose = ImageChops.invert(rose_petals.convert("1"))
+            drawry.bitmap((0, 90), rose)
+        elif picture == "buffalo":
+            drawblack.bitmap((0, 90), buffalo_black)
+            drawry.bitmap((0, 90), buffalo_red)
+
+        elif picture == "robot":
+            y = epd.height - robot_black.height
+            drawblack.bitmap((0, y), robot_black)
+            drawry.bitmap((0, y), robot_red)
 
         # greeting = "howdy!"
         # drawblack.text((2, 0), greeting, font=font16, fill=0)
@@ -242,17 +278,9 @@ try:
             font=font10,
             fill=0,
         )
-        drawblack.text((0, info_y + 2+10*3), f"{internet_speed}", font=font10, fill=0)
-
-        logging.info("Drawing rose")
-        if black_background:
-            rose = entire_rose.convert("1")
-        else:
-            rose = ImageChops.invert(no_petals.convert("1"))
-        drawblack.bitmap((0, 90), rose)
-
-        rose = ImageChops.invert(rose_petals.convert("1"))
-        drawry.bitmap((0, 90), rose)
+        drawblack.text(
+            (0, info_y + 2 + 10 * 3), f"{internet_speed}", font=font10, fill=0
+        )
 
         logging.info("Initializing screen and sending drawing")
         epd.init()
