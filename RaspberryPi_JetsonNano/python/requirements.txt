@@ -2,3 +2,5 @@ RPi.GPIO
 spidev
 numpy
 Pillow
+
+icalevents

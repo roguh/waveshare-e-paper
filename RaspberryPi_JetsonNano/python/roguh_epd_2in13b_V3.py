@@ -15,7 +15,6 @@ from argparse import ArgumentParser
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
-from lib.waveshare_epd import epd2in13b_V3
 
 DESCRIPTION = "roguh's epd2in13b_V3 e-paper clock and art"
 
@@ -33,13 +32,35 @@ fh.setLevel(logging.INFO)
 fh.setFormatter(logging.Formatter(FORMAT))
 logging.getLogger().addHandler(fh)
 
+class DryRunEPD:
+    @property
+    def width(self):
+        return 126
+    @property
+    def height(self):
+        return 298
+    def __getattr__(self, name):
+        def anything(*args, **kwargs):
+            logging.info("DryRunEPD.%s(%s, %s)", name, ", ".join(map(str, args)), kwargs)
+        return anything
+    @classmethod
+    def EPD(cls):
+        return cls()
+
+try:
+    from lib.waveshare_epd import epd2in13b_V3
+except Exception:
+    logging.error("Unable to load e-ink module, assuming dry-run mode.")
+    epd2in13b_V3 = DryRunEPD
+
 parser = ArgumentParser(description=DESCRIPTION)
 parser.add_argument(
     "--cycle", "--period", "-c", type=float, default=1, help="Run every X minutes"
 )
 parser.add_argument("--black-background", "-b", action="store_true")
+parser.add_argument("--dry-run", action="store_true")
 parser.add_argument("--max-iterations", "-m", type=int, default=float("inf"))
-parser.add_argument("--pictures", "-p", type=str, default="robot,buffalo,rose")
+parser.add_argument("--pictures", "-p", type=str, default="buffalo,rose")
 argp = parser.parse_args()
 black_background = argp.black_background
 max_iterations = argp.max_iterations
@@ -131,7 +152,10 @@ def get_internet_speed():
 
 
 try:
-    epd = epd2in13b_V3.EPD()
+    if argp.dry_run:
+        epd = DryRunEPD.EPD()
+    else:
+        epd = epd2in13b_V3.EPD()
 
     # Drawing on the image
     logging.info("Loading files")
@@ -151,10 +175,14 @@ try:
     buffalo_red = Image.open(
         os.path.join(rpicdir, "generated/three_color_two_buffalo_104.red.png")
     )
-    robot_black = Image.open(
-        os.path.join(rpicdir, "generated/red_robot_3color.black.png")
-    )
-    robot_red = Image.open(os.path.join(rpicdir, "generated/red_robot_3color.red.png"))
+    try:
+        robot_black = Image.open(
+            os.path.join(rpicdir, "generated/red_robot_3color.black.png")
+        )
+        robot_red = Image.open(os.path.join(rpicdir, "generated/red_robot_3color.red.png"))
+    except Exception:
+        logging.warning("Unable to find dumb robot from union-buster-inc")
+        robot_red, robot_black = None, None
 
     # Drawing on the Vertical image
     refresh_time = 15

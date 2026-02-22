@@ -5,6 +5,7 @@ My files are in `RaspberryPi_JetsonNano/python/`.
 ```
 cd RaspberryPi_JetsonNano/python/
 ./roguh_epd_2in13b_V3.py
+./roguh_epd_2in13b_V3.py --dry-run  # if you're uncool and dont have a ROC with SPI libraries installed
 ```
 
 BTW FYI:
