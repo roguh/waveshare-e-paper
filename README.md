@@ -30,6 +30,20 @@ $ cat ./calendar_links.json
 
 https://www.waveshare.com/2.13inch-e-paper-hat.htm
 
+### Dependency Install                                                         
+                                                                               
+You might need to enable SPI for your board and install python-dev development dependencies `apt instal
+l python3-dev`.
+                                                                               
+You might also need a larger swap file if any of these steps run out of memory.
+                                                                               
+```                                                                            
+python3 -m venv venv                                                           
+# or other file depending on shell, e.g. activate.fish                         
+. venv/bin/activate                                                            
+pip install -r requirements.txt                                                
+``` 
+
 ### Credits
 
 BTW FYI: some of the SPI firmware code is originally from an old waveshare git repo.
