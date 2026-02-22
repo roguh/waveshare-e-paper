@@ -17,46 +17,8 @@ $ cat ./calendar_links.json
 ["https://outlook.office365.com/owa/calendar/..../reachcalendar.ics"]
 ```
 
-BTW FYI:
+BTW FYI: some of the SPI firmware code is originally from an old waveshare git repo.
+
 ```bash
 $ git diff 833d3a86be8c8e0463838574fdbece36b1487fa8 --stat
 ```
-
-### PRETTTTYYYYYYYYYY
-
-![](./RaspberryPi_JetsonNano/python/roguh_pics/generated/three_color_two_buffalo_104.resized104.png)
-![](./RaspberryPi_JetsonNano/python/roguh_pics/test.png)
- 
-#### e-Paper  
-waveshare electronics
-![waveshare_logo.png](waveshare_logo.png)
-
-##### 中文:  
-Jetson Nano、Raspberry Pi、Arduino、STM32例程
-* RaspberryPi_JetsonNano  
-    > C
-    > Python 
-* Arduino:  
-    > Arduino UNO  
-* STM32:  
-    > STM32F103ZET6 
-    
-更多资料请在官网上搜索:  
-http://www.waveshare.net
-
-
-## English:  
-Jetson Nano、Raspberry Pi、Arduino、STM32 Demo:  
-* RaspberryPi_JetsonNano:  
-    > C
-    > Python
-* Arduino:  
-    > Arduino UNO  
-* STM32:  
-    > STM32F103ZET6 
-    
-For more information, please search on the official website:   
-https://www.waveshare.com
-
-
-
