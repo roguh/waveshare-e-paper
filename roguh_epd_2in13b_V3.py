@@ -19,6 +19,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont
 DESCRIPTION = "roguh's epd2in13b_V3 e-paper clock and art"
 
 root = os.path.dirname(os.path.realpath(__file__))
+# TODO simplify picture finding
 picdir = os.path.join(root, "pic")
 rpicdir = os.path.join(root, "roguh_pics")
 
@@ -32,6 +33,9 @@ fh.setLevel(logging.INFO)
 fh.setFormatter(logging.Formatter(FORMAT))
 logging.getLogger().addHandler(fh)
 
+class C:
+    def module_exit(self):
+        logging.info("DryRunEPD exit")
 class DryRunEPD:
     @property
     def width(self):
@@ -40,6 +44,9 @@ class DryRunEPD:
     def height(self):
         return 298
     def __getattr__(self, name):
+        # TODO
+        if name == "epdconfig":
+            return C()
         def anything(*args, **kwargs):
             logging.info("DryRunEPD.%s(%s, %s)", name, ", ".join(map(str, args)), kwargs)
         return anything
@@ -329,7 +336,8 @@ try:
     logging.info("Done")
 
 except IOError as e:
-    logging.exception("uwu")
+    logging.exception("Unexpected error detected!")
+    epd2in13b_V3.epdconfig.module_exit()
 
 except KeyboardInterrupt:
     logging.critical("Shutting down. Bye!")
