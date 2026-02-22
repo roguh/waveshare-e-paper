@@ -1,5 +1,8 @@
 ## E-Ink Clock, Picture Slideshow, and Event Calendar by Felina Rivera Calzadillas (ROGUH)
 
+![Buffalo Soldiers](./RaspberryPi_JetsonNano/python/roguh_pics/generated/three_color_two_buffalo_104.resized104.png)
+![Rose](./RaspberryPi_JetsonNano/python/roguh_pics/test.png)
+
 ### **Usage**
 
 Install all dependencies and run the main script:
