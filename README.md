@@ -21,7 +21,11 @@ BTW FYI:
 ```bash
 $ git diff 833d3a86be8c8e0463838574fdbece36b1487fa8 --stat
 ```
- 
+
+### PRETTTTYYYYYYYYYY
+
+![](./RaspberryPi_JetsonNano/python/roguh_pics/generated/three_color_two_buffalo_104.resized104.png)
+![](./RaspberryPi_JetsonNano/python/roguh_pics/test.png)
  
 #### e-Paper  
 waveshare electronics
