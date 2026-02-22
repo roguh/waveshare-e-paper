@@ -1,6 +1,6 @@
-ROGUH EDITS are in `RaspberryPi_JetsonNano/python/`.
+My files are in `RaspberryPi_JetsonNano/python/`.
 
-Usage, install all dependencies and run:
+**Usage**: install all dependencies and run the main script:
 
 ```
 cd RaspberryPi_JetsonNano/python/
@@ -13,11 +13,11 @@ $ git diff 833d3a86be8c8e0463838574fdbece36b1487fa8 --stat
 ```
  
  
-# e-Paper  
+#### e-Paper  
 waveshare electronics
 ![waveshare_logo.png](waveshare_logo.png)
 
-## 中文:  
+##### 中文:  
 Jetson Nano、Raspberry Pi、Arduino、STM32例程
 * RaspberryPi_JetsonNano  
     > C
