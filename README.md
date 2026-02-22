@@ -1,11 +1,13 @@
+## E-Ink Clock, Picture Slideshow, and Event Calendar by Felina Rivera Calzadillas (ROGUH)
+
 My files are in `RaspberryPi_JetsonNano/python/`.
 
 **Usage**: install all dependencies and run the main script:
 
 ```
 cd RaspberryPi_JetsonNano/python/
-./roguh_epd_2in13b_V3.py
-./roguh_epd_2in13b_V3.py --dry-run  # if you're uncool and dont have a ROC with SPI libraries installed
+./main.py
+./main.py --dry-run  # if you're uncool and dont have a ROC with SPI libraries installed
 ```
 
 To use the calendar features, get a public ical link and add it as a JSON list to `calendar_links.json`:
