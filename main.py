@@ -16,7 +16,7 @@ from argparse import ArgumentParser
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 
-DESCRIPTION = "roguh's epd2in13b_V3 e-paper clock and art"
+DESCRIPTION = "Felina's e-paper calendar, slideshow, clock, and 3-color art."
 
 root = os.path.dirname(os.path.realpath(__file__))
 # TODO simplify picture finding
@@ -57,7 +57,7 @@ class DryRunEPD:
 try:
     from lib.waveshare_epd import epd2in13b_V3
 except Exception:
-    logging.error("Unable to load e-ink module, assuming dry-run mode.")
+    logging.exception("Unable to load e-ink module, assuming dry-run mode.")
     epd2in13b_V3 = DryRunEPD
 
 parser = ArgumentParser(description=DESCRIPTION)
